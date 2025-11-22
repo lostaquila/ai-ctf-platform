@@ -1,5 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
 import ChatInterface from '@/components/ChatInterface';
+import LiveSimulationView from '@/components/LiveSimulationView';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -32,7 +33,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
 
     const { data: simulation } = await supabase
         .from('simulations')
-        .select('title, description')
+        .select('id, title, description, type, flag_code')
         .eq('id', id)
         .maybeSingle();
 
@@ -54,6 +55,26 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         .eq('team_id', profile.team_id)
         .eq('simulation_id', id);
 
+    const initialMessages = [
+        { role: 'assistant' as const, content: 'Who goes there? State your business!' }
+    ];
+
+    // Debug logging
+    console.log('Simulation type:', simulation.type);
+    console.log('Is live?', simulation.type === 'live');
+
+    // Conditional rendering based on simulation type
+    if (simulation.type === 'live') {
+        return (
+            <LiveSimulationView
+                simulation={simulation}
+                initialMessages={initialMessages}
+                initialUnlockedHints={unlockedHints?.map(h => h.hint_index) || []}
+            />
+        );
+    }
+
+    // Default: Practice mode
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="mb-6">

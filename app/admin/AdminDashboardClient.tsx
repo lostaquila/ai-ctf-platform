@@ -19,6 +19,7 @@ export default function AdminDashboardClient() {
         system_prompt: '',
         flag_code: '',
         type: 'practice' as 'practice' | 'live',
+        points: 100,
         hint_1: '',
         hint_2: '',
         hint_3: ''
@@ -66,6 +67,7 @@ export default function AdminDashboardClient() {
                 system_prompt: '',
                 flag_code: '',
                 type: 'practice',
+                points: 100,
                 hint_1: '',
                 hint_2: '',
                 hint_3: ''
@@ -84,6 +86,7 @@ export default function AdminDashboardClient() {
             system_prompt: sim.system_prompt || '', // Note: system_prompt might be hidden/empty if not selected
             flag_code: sim.flag_code,
             type: sim.type,
+            points: sim.points || 100,
             hint_1: sim.hint_1 || '',
             hint_2: sim.hint_2 || '',
             hint_3: sim.hint_3 || ''
@@ -99,6 +102,7 @@ export default function AdminDashboardClient() {
             system_prompt: '',
             flag_code: '',
             type: 'practice',
+            points: 100,
             hint_1: '',
             hint_2: '',
             hint_3: ''
@@ -275,7 +279,7 @@ export default function AdminDashboardClient() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4">
+                            <div className="grid grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Type</label>
                                     <select
@@ -286,6 +290,17 @@ export default function AdminDashboardClient() {
                                         <option value="practice">Practice</option>
                                         <option value="live">Live Competition</option>
                                     </select>
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Points</label>
+                                    <input
+                                        type="number"
+                                        required
+                                        min="0"
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary/50 focus:outline-none"
+                                        value={simForm.points}
+                                        onChange={e => setSimForm({ ...simForm, points: parseInt(e.target.value) || 0 })}
+                                    />
                                 </div>
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Flag Code</label>
@@ -369,50 +384,56 @@ export default function AdminDashboardClient() {
                         <div className="mt-12">
                             <h3 className="text-lg font-bold text-white mb-4">Existing Simulations</h3>
                             <div className="overflow-hidden rounded-lg border border-white/10">
-                                <table className="w-full">
+                                <table className="w-full table-fixed">
                                     <thead className="bg-white/5">
                                         <tr>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Title</th>
-                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase w-1/3">Title</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase w-24">Type</th>
+                                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase w-20">Pts</th>
                                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-400 uppercase">Flag Code</th>
-                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase">Actions</th>
+                                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-400 uppercase w-24">Actions</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-white/5">
                                         {simulations.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-4 py-8 text-center text-gray-500">
+                                                <td colSpan={5} className="px-4 py-8 text-center text-gray-500">
                                                     No simulations found.
                                                 </td>
                                             </tr>
                                         ) : (
                                             simulations.map((sim) => (
                                                 <tr key={sim.id} className="hover:bg-white/5">
-                                                    <td className="px-4 py-3 text-sm text-white">{sim.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-white truncate" title={sim.title}>{sim.title}</td>
                                                     <td className="px-4 py-3 text-sm">
                                                         <span className={`px-2 py-1 rounded text-xs font-medium ${sim.type === 'live' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
                                                             }`}>
                                                             {sim.type.toUpperCase()}
                                                         </span>
                                                     </td>
-                                                    <td className="px-4 py-3 text-sm font-mono text-gray-400">{sim.flag_code}</td>
-                                                    <td className="px-4 py-3 text-right">
-                                                        <button
-                                                            onClick={() => handleEditSimulation(sim)}
-                                                            disabled={actionLoading}
-                                                            className="text-blue-500 hover:text-blue-400 p-1 rounded hover:bg-blue-500/10 transition-colors disabled:opacity-50 mr-2"
-                                                            title="Edit Simulation"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDeleteSimulation(sim.id)}
-                                                            disabled={actionLoading}
-                                                            className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors disabled:opacity-50"
-                                                            title="Delete Simulation"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
+                                                    <td className="px-4 py-3 text-sm text-yellow-400 font-bold">{sim.points || 100}</td>
+                                                    <td className="px-4 py-3 text-sm font-mono text-gray-400 truncate" title={sim.flag_code}>
+                                                        {sim.flag_code}
+                                                    </td>
+                                                    <td className="px-4 py-3 text-right w-24">
+                                                        <div className="flex justify-end space-x-2">
+                                                            <button
+                                                                onClick={() => handleEditSimulation(sim)}
+                                                                disabled={actionLoading}
+                                                                className="text-blue-500 hover:text-blue-400 p-1 rounded hover:bg-blue-500/10 transition-colors disabled:opacity-50"
+                                                                title="Edit Simulation"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => handleDeleteSimulation(sim.id)}
+                                                                disabled={actionLoading}
+                                                                className="text-red-500 hover:text-red-400 p-1 rounded hover:bg-red-500/10 transition-colors disabled:opacity-50"
+                                                                title="Delete Simulation"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                        </div>
                                                     </td>
                                                 </tr>
                                             ))

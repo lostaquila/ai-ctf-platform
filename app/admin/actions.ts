@@ -115,10 +115,10 @@ export async function createSimulation(data: {
     system_prompt: string;
     flag_code: string;
     type: 'practice' | 'live';
+    points: number;
     hint_1?: string;
     hint_2?: string;
     hint_3?: string;
-    start_time?: string;
 }) {
     try {
         await requireAdmin();
@@ -131,7 +131,7 @@ export async function createSimulation(data: {
             system_prompt: data.system_prompt,
             flag_code: data.flag_code,
             type: data.type,
-            start_time: data.start_time || null
+            points: data.points
         };
 
         const { data: newSim, error } = await supabaseAdmin
@@ -238,10 +238,10 @@ export async function updateSimulation(id: string, data: {
     system_prompt: string;
     flag_code: string;
     type: 'practice' | 'live';
+    points: number;
     hint_1?: string;
     hint_2?: string;
     hint_3?: string;
-    start_time?: string;
 }) {
     try {
         await requireAdmin();
@@ -254,7 +254,7 @@ export async function updateSimulation(id: string, data: {
             system_prompt: data.system_prompt,
             flag_code: data.flag_code,
             type: data.type,
-            start_time: data.start_time || null
+            points: data.points
         };
 
         const { error } = await supabaseAdmin

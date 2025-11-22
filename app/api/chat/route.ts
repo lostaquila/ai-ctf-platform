@@ -82,7 +82,7 @@ export async function POST(request: Request) {
                     const data = await response.json();
                     const content = data.choices[0].message.content;
                     console.log(`Success with model: ${model}`);
-                    return NextResponse.json({ content });
+                    return NextResponse.json({ message: content });
                 }
 
                 // If not OK, log and continue to next model
