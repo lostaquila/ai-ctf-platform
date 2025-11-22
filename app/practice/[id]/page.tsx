@@ -47,6 +47,13 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
         );
     }
 
+    // Fetch unlocked hints
+    const { data: unlockedHints } = await supabase
+        .from('unlocked_hints')
+        .select('hint_index')
+        .eq('team_id', profile.team_id)
+        .eq('simulation_id', id);
+
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
             <div className="mb-6">
@@ -62,6 +69,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
                 <ChatInterface
                     simulationId={id}
                     teamId={profile.team_id}
+                    initialUnlockedHints={unlockedHints?.map(h => h.hint_index) || []}
                 />
             </Suspense>
         </div>

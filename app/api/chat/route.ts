@@ -2,6 +2,9 @@ import { createClient } from '@supabase/supabase-js';
 import { createClient as createServerClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
+const MODELS = [
+    "anthropic/claude-3.5-sonnet"
+];
 
 export async function POST(request: Request) {
     try {
@@ -51,34 +54,58 @@ export async function POST(request: Request) {
 
         const systemPrompt = simulation.system_prompt;
 
-        // 4. OpenRouter Call
-        console.log("Attempting to connect to OpenRouter...");
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: {
-                "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter
-                "X-Title": "AI CTF Platform", // Required by OpenRouter
-                "Content-Type": "application/json"
-            },
-            body: JSON.stringify({
-                model: "meta-llama/llama-3.2-3b-instruct:free",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    ...messages
-                ]
-            })
-        });
+        // 4. OpenRouter Call with Fallback
+        let lastError = null;
 
-        if (!response.ok) {
-            const errorText = await response.text();
-            console.error("OpenRouter Error:", response.status, errorText);
-            return NextResponse.json({ error: `OpenRouter Error: ${errorText}` }, { status: response.status });
+        for (const model of MODELS) {
+            try {
+                console.log(`Attempting to connect to OpenRouter with model: ${model}`);
+
+                const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Authorization": `Bearer ${process.env.OPENROUTER_API_KEY}`,
+                        "HTTP-Referer": "http://localhost:3000", // Required by OpenRouter
+                        "X-Title": "AI CTF Platform", // Required by OpenRouter
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        model: model,
+                        messages: [
+                            { role: "system", content: systemPrompt },
+                            ...messages
+                        ]
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    const content = data.choices[0].message.content;
+                    console.log(`Success with model: ${model}`);
+                    return NextResponse.json({ content });
+                }
+
+                // If not OK, log and continue to next model
+                const errorText = await response.text();
+                console.warn(`Model ${model} failed with status ${response.status}: ${errorText}`);
+                lastError = `OpenRouter Error (${model}): ${response.status} - ${errorText}`;
+
+                // Only continue if it's a rate limit or server error
+                // If it's a 400 (Bad Request), it might be the prompt, but we'll try others just in case
+                if (response.status === 401) {
+                    // Invalid API Key - no point trying others
+                    return NextResponse.json({ error: 'Invalid OpenRouter API Key' }, { status: 500 });
+                }
+
+            } catch (error: any) {
+                console.warn(`Network error with model ${model}:`, error);
+                lastError = `Network Error (${model}): ${error.message}`;
+            }
         }
 
-        const data = await response.json();
-        const content = data.choices[0].message.content;
-        return NextResponse.json({ content });
+        // If we get here, all models failed
+        console.error('All models failed. Last error:', lastError);
+        return NextResponse.json({ error: `All AI models failed. Last error: ${lastError}` }, { status: 503 });
 
     } catch (error: any) {
         console.error('Chat API Error:', error);
