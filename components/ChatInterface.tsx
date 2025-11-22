@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Flag, AlertCircle, CheckCircle2, Bot, User as UserIcon, Loader2 } from 'lucide-react';
+import { Send, Flag, AlertCircle, CheckCircle2, Bot, User as UserIcon, Loader2, Lightbulb, Lock } from 'lucide-react';
 import { createClient } from '@/utils/supabase/client';
+import { unlockHint } from '@/app/practice/actions';
 
 type Message = {
     role: 'user' | 'assistant';
@@ -13,9 +14,10 @@ type ChatInterfaceProps = {
     simulationId: string;
     initialMessages?: Message[];
     teamId: string;
+    initialUnlockedHints?: number[];
 };
 
-export default function ChatInterface({ simulationId, initialMessages = [], teamId }: ChatInterfaceProps) {
+export default function ChatInterface({ simulationId, initialMessages = [], teamId, initialUnlockedHints = [] }: ChatInterfaceProps) {
     const [messages, setMessages] = useState<Message[]>(initialMessages);
     const [input, setInput] = useState('');
     const [flag, setFlag] = useState('');
@@ -25,6 +27,27 @@ export default function ChatInterface({ simulationId, initialMessages = [], team
     const [statusMessage, setStatusMessage] = useState('');
     const messagesEndRef = useRef<HTMLDivElement>(null);
     const supabase = createClient();
+
+    // Hints State
+    const [unlockedHints, setUnlockedHints] = useState<number[]>(initialUnlockedHints);
+    const [hintTexts, setHintTexts] = useState<Record<number, string>>({});
+    const [unlockingHint, setUnlockingHint] = useState<number | null>(null);
+
+    // Fetch hint texts for already unlocked hints on mount
+    useEffect(() => {
+        const fetchUnlockedHintTexts = async () => {
+            for (const index of initialUnlockedHints) {
+                const result = await unlockHint(simulationId, index);
+                if (result.success && result.hint) {
+                    const text = result.hint as string;
+                    setHintTexts(prev => ({ ...prev, [index]: text }));
+                }
+            }
+        };
+        if (initialUnlockedHints.length > 0) {
+            fetchUnlockedHintTexts();
+        }
+    }, [simulationId]); // Run once on mount/sim change
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -61,7 +84,6 @@ export default function ChatInterface({ simulationId, initialMessages = [], team
                     const errorJson = JSON.parse(errorText);
                     if (errorJson.error) errorMessage = errorJson.error;
                 } catch (e) {
-                    // If parsing fails, use the raw text if available, or fall back to status
                     if (errorText) errorMessage = `Server error: ${response.status} - ${errorText.substring(0, 100)}`;
                 }
 
@@ -111,6 +133,30 @@ export default function ChatInterface({ simulationId, initialMessages = [], team
             setStatusMessage('Error submitting flag.');
         } finally {
             setSubmitting(false);
+        }
+    };
+
+    const handleUnlockHint = async (index: number) => {
+        const costs: Record<number, number> = { 1: 10, 2: 25, 3: 50 };
+        const cost = costs[index];
+
+        if (!confirm(`Are you sure you want to unlock Hint ${index} for ${cost} points?`)) return;
+
+        setUnlockingHint(index);
+        try {
+            const result = await unlockHint(simulationId, index);
+            if (result.error) {
+                alert(result.error);
+            } else if (result.success && result.hint) {
+                const text = result.hint as string;
+                setHintTexts(prev => ({ ...prev, [index]: text }));
+                setUnlockedHints(prev => [...prev, index]);
+            }
+        } catch (error) {
+            console.error('Unlock error:', error);
+            alert('Failed to unlock hint.');
+        } finally {
+            setUnlockingHint(null);
         }
     };
 
@@ -186,14 +232,15 @@ export default function ChatInterface({ simulationId, initialMessages = [], team
                 </div>
             </div>
 
-            {/* Submission Panel */}
-            <div className="glass-card p-6 flex flex-col">
-                <h3 className="text-xl font-bold text-white mb-6 flex items-center">
-                    <Flag className="w-5 h-5 mr-2 text-red-500" />
-                    Submit Flag
-                </h3>
+            {/* Sidebar: Submission & Hints */}
+            <div className="flex flex-col space-y-6 h-full overflow-y-auto">
+                {/* Submission Panel */}
+                <div className="glass-card p-6">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                        <Flag className="w-5 h-5 mr-2 text-red-500" />
+                        Submit Flag
+                    </h3>
 
-                <div className="flex-1">
                     <div className="bg-black/20 rounded-xl p-4 mb-6 border border-white/5">
                         <h4 className="text-sm font-medium text-gray-400 mb-2">Objective</h4>
                         <p className="text-gray-300 text-sm">
@@ -236,6 +283,57 @@ export default function ChatInterface({ simulationId, initialMessages = [], team
                             {submitting ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Submit Flag'}
                         </button>
                     </form>
+                </div>
+
+                {/* Hints Panel */}
+                <div className="glass-card p-6 flex-1">
+                    <h3 className="text-xl font-bold text-white mb-6 flex items-center">
+                        <Lightbulb className="w-5 h-5 mr-2 text-yellow-500" />
+                        Hints
+                    </h3>
+
+                    <div className="space-y-4">
+                        {[1, 2, 3].map((index) => {
+                            const isUnlocked = unlockedHints.includes(index);
+                            const costs: Record<number, number> = { 1: 10, 2: 25, 3: 50 };
+                            const cost = costs[index];
+
+                            return (
+                                <div key={index} className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                    <button
+                                        onClick={() => !isUnlocked && handleUnlockHint(index)}
+                                        disabled={isUnlocked || unlockingHint === index}
+                                        className={`w-full p-4 flex items-center justify-between transition-colors ${isUnlocked
+                                            ? 'bg-green-500/10 cursor-default'
+                                            : 'hover:bg-white/5'
+                                            }`}
+                                    >
+                                        <div className="flex items-center">
+                                            {isUnlocked ? (
+                                                <CheckCircle2 className="w-5 h-5 text-green-500 mr-3" />
+                                            ) : (
+                                                <Lock className="w-5 h-5 text-gray-500 mr-3" />
+                                            )}
+                                            <span className={`font-medium ${isUnlocked ? 'text-green-400' : 'text-gray-300'}`}>
+                                                Hint {index}
+                                            </span>
+                                        </div>
+                                        {!isUnlocked && (
+                                            <span className="text-xs font-bold text-yellow-500 bg-yellow-500/10 px-2 py-1 rounded">
+                                                {cost} PTS
+                                            </span>
+                                        )}
+                                    </button>
+
+                                    {isUnlocked && hintTexts[index] && (
+                                        <div className="p-4 pt-0 text-sm text-gray-300 animate-in fade-in slide-in-from-top-2">
+                                            {hintTexts[index]}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
                 </div>
             </div>
         </div>
