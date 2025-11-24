@@ -71,12 +71,42 @@ export async function leaveTeamAction() {
 
     if (!user) return { error: 'Not authenticated' };
 
-    const { error } = await supabase
+    // 1. Get user's current team_id
+    const { data: profile } = await supabase
         .from('profiles')
-        .update({ team_id: null })
-        .eq('id', user.id);
+        .select('team_id')
+        .eq('id', user.id)
+        .single();
 
-    if (error) return { error: error.message };
+    if (!profile?.team_id) return { error: 'Not in a team' };
+
+    const teamId = profile.team_id;
+
+    // 2. Check how many members are in this team
+    const { count, error: countError } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true })
+        .eq('team_id', teamId);
+
+    if (countError) return { error: 'Failed to check team membership' };
+
+    // 3. If user is the last member, delete the team
+    if (count === 1) {
+        const { error: deleteError } = await supabase
+            .from('teams')
+            .delete()
+            .eq('id', teamId);
+
+        if (deleteError) return { error: 'Failed to delete team' };
+    } else {
+        // 4. Otherwise, just remove the user from the team
+        const { error: leaveError } = await supabase
+            .from('profiles')
+            .update({ team_id: null })
+            .eq('id', user.id);
+
+        if (leaveError) return { error: leaveError.message };
+    }
 
     revalidatePath('/', 'layout');
     return { success: true };

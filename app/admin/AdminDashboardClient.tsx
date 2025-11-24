@@ -1,14 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Shield, Users, Gamepad2, Settings, Loader2, Plus, Trash2, AlertTriangle, Pencil, X } from 'lucide-react';
-import { getAdminData, createSimulation, resetGame, deleteSimulation, updateSimulation } from './actions';
+import { Shield, Users, Gamepad2, Settings, Loader2, Plus, Trash2, AlertTriangle, Pencil, X, Calendar, ToggleLeft, ToggleRight } from 'lucide-react';
+import { getAdminData, createSimulation, resetGame, deleteSimulation, updateSimulation, createEvent, toggleEventStatus } from './actions';
 
 export default function AdminDashboardClient() {
-    const [activeTab, setActiveTab] = useState<'players' | 'simulations' | 'settings'>('players');
+    const [activeTab, setActiveTab] = useState<'players' | 'simulations' | 'events' | 'settings'>('players');
     const [loading, setLoading] = useState(true);
     const [users, setUsers] = useState<any[]>([]);
     const [simulations, setSimulations] = useState<any[]>([]);
+    const [events, setEvents] = useState<any[]>([]);
     const [error, setError] = useState<string | null>(null);
 
     // Simulation Form State
@@ -20,15 +21,23 @@ export default function AdminDashboardClient() {
         flag_code: '',
         type: 'practice' as 'practice' | 'live',
         points: 100,
+        event_id: '',
         hint_1: '',
         hint_2: '',
         hint_3: ''
     });
+
+    // Event Form State
+    const [eventForm, setEventForm] = useState({
+        title: '',
+        access_code: ''
+    });
+
     const [actionLoading, setActionLoading] = useState(false);
     const [actionMessage, setActionMessage] = useState('');
 
     useEffect(() => {
-        if (activeTab === 'players' || activeTab === 'simulations') {
+        if (activeTab === 'players' || activeTab === 'simulations' || activeTab === 'events') {
             loadData();
         }
     }, [activeTab]);
@@ -41,6 +50,7 @@ export default function AdminDashboardClient() {
         } else {
             setUsers(result.users || []);
             setSimulations(result.simulations || []);
+            setEvents(result.events || []);
         }
         setLoading(false);
     };
@@ -68,6 +78,7 @@ export default function AdminDashboardClient() {
                 flag_code: '',
                 type: 'practice',
                 points: 100,
+                event_id: '',
                 hint_1: '',
                 hint_2: '',
                 hint_3: ''
@@ -78,15 +89,44 @@ export default function AdminDashboardClient() {
         setActionLoading(false);
     };
 
+    const handleCreateEvent = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setActionLoading(true);
+        setActionMessage('');
+
+        const result = await createEvent(eventForm.title, eventForm.access_code);
+
+        if (result.error) {
+            setActionMessage(`Error: ${result.error}`);
+        } else {
+            setActionMessage('Event created successfully!');
+            setEventForm({ title: '', access_code: '' });
+            loadData();
+        }
+        setActionLoading(false);
+    };
+
+    const handleToggleEvent = async (id: string, currentStatus: boolean) => {
+        setActionLoading(true);
+        const result = await toggleEventStatus(id, !currentStatus);
+        if (result.error) {
+            alert(`Error: ${result.error}`);
+        } else {
+            loadData();
+        }
+        setActionLoading(false);
+    };
+
     const handleEditSimulation = (sim: any) => {
         setEditingSimulation(sim);
         setSimForm({
             title: sim.title,
             description: sim.description || '',
-            system_prompt: sim.system_prompt || '', // Note: system_prompt might be hidden/empty if not selected
+            system_prompt: sim.system_prompt || '',
             flag_code: sim.flag_code,
             type: sim.type,
             points: sim.points || 100,
+            event_id: sim.event_id || '',
             hint_1: sim.hint_1 || '',
             hint_2: sim.hint_2 || '',
             hint_3: sim.hint_3 || ''
@@ -103,6 +143,7 @@ export default function AdminDashboardClient() {
             flag_code: '',
             type: 'practice',
             points: 100,
+            event_id: '',
             hint_1: '',
             hint_2: '',
             hint_3: ''
@@ -169,10 +210,10 @@ export default function AdminDashboardClient() {
             </div>
 
             {/* Tabs */}
-            <div className="flex space-x-4 mb-8 border-b border-white/10">
+            <div className="flex space-x-4 mb-8 border-b border-white/10 overflow-x-auto">
                 <button
                     onClick={() => setActiveTab('players')}
-                    className={`pb-4 px-4 font-medium transition-colors flex items-center ${activeTab === 'players'
+                    className={`pb-4 px-4 font-medium transition-colors flex items-center whitespace-nowrap ${activeTab === 'players'
                         ? 'text-primary border-b-2 border-primary'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -182,7 +223,7 @@ export default function AdminDashboardClient() {
                 </button>
                 <button
                     onClick={() => setActiveTab('simulations')}
-                    className={`pb-4 px-4 font-medium transition-colors flex items-center ${activeTab === 'simulations'
+                    className={`pb-4 px-4 font-medium transition-colors flex items-center whitespace-nowrap ${activeTab === 'simulations'
                         ? 'text-primary border-b-2 border-primary'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -191,8 +232,18 @@ export default function AdminDashboardClient() {
                     Simulations Manager
                 </button>
                 <button
+                    onClick={() => setActiveTab('events')}
+                    className={`pb-4 px-4 font-medium transition-colors flex items-center whitespace-nowrap ${activeTab === 'events'
+                        ? 'text-primary border-b-2 border-primary'
+                        : 'text-gray-400 hover:text-white'
+                        }`}
+                >
+                    <Calendar className="w-4 h-4 mr-2" />
+                    Live Events
+                </button>
+                <button
                     onClick={() => setActiveTab('settings')}
-                    className={`pb-4 px-4 font-medium transition-colors flex items-center ${activeTab === 'settings'
+                    className={`pb-4 px-4 font-medium transition-colors flex items-center whitespace-nowrap ${activeTab === 'settings'
                         ? 'text-red-500 border-b-2 border-red-500'
                         : 'text-gray-400 hover:text-white'
                         }`}
@@ -279,7 +330,7 @@ export default function AdminDashboardClient() {
                                 />
                             </div>
 
-                            <div className="grid grid-cols-3 gap-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div>
                                     <label className="block text-sm font-medium text-gray-400 mb-2">Type</label>
                                     <select
@@ -313,6 +364,26 @@ export default function AdminDashboardClient() {
                                         placeholder="FLAG-XXXX-XXXX"
                                     />
                                 </div>
+                            </div>
+
+                            {/* Event Selection */}
+                            <div>
+                                <label className="block text-sm font-medium text-gray-400 mb-2">Assign to Event (Optional)</label>
+                                <select
+                                    className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary/50 focus:outline-none"
+                                    value={simForm.event_id}
+                                    onChange={e => setSimForm({ ...simForm, event_id: e.target.value })}
+                                >
+                                    <option value="">-- None (Public Practice) --</option>
+                                    {events.map(evt => (
+                                        <option key={evt.id} value={evt.id}>
+                                            {evt.title} {evt.is_active ? '(Active)' : '(Inactive)'}
+                                        </option>
+                                    ))}
+                                </select>
+                                <p className="text-xs text-gray-500 mt-1">
+                                    If assigned to an event, this simulation will ONLY appear in the event lobby, not in public practice.
+                                </p>
                             </div>
 
                             <div>
@@ -404,7 +475,10 @@ export default function AdminDashboardClient() {
                                         ) : (
                                             simulations.map((sim) => (
                                                 <tr key={sim.id} className="hover:bg-white/5">
-                                                    <td className="px-4 py-3 text-sm text-white truncate" title={sim.title}>{sim.title}</td>
+                                                    <td className="px-4 py-3 text-sm text-white truncate" title={sim.title}>
+                                                        {sim.title}
+                                                        {sim.event_id && <span className="ml-2 text-xs bg-purple-500/20 text-purple-400 px-1.5 py-0.5 rounded">Event</span>}
+                                                    </td>
                                                     <td className="px-4 py-3 text-sm">
                                                         <span className={`px-2 py-1 rounded text-xs font-medium ${sim.type === 'live' ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'
                                                             }`}>
@@ -441,6 +515,94 @@ export default function AdminDashboardClient() {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {activeTab === 'events' && (
+                    <div className="max-w-2xl mx-auto glass-card p-8">
+                        <h2 className="text-xl font-bold text-white mb-6 flex items-center">
+                            <Plus className="w-5 h-5 mr-2 text-primary" />
+                            Create Live Event
+                        </h2>
+                        <form onSubmit={handleCreateEvent} className="space-y-6 mb-12">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Event Title</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary/50 focus:outline-none"
+                                        value={eventForm.title}
+                                        onChange={e => setEventForm({ ...eventForm, title: e.target.value })}
+                                        placeholder="e.g. Winter CTF 2024"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-400 mb-2">Access Code</label>
+                                    <input
+                                        type="text"
+                                        required
+                                        className="w-full bg-black/20 border border-white/10 rounded-lg px-4 py-2 text-white focus:border-primary/50 focus:outline-none font-mono"
+                                        value={eventForm.access_code}
+                                        onChange={e => setEventForm({ ...eventForm, access_code: e.target.value })}
+                                        placeholder="e.g. SECRET-CODE"
+                                    />
+                                </div>
+                            </div>
+
+                            {actionMessage && (
+                                <div className={`p-3 rounded-lg ${actionMessage.includes('Error') ? 'bg-red-500/10 text-red-400' : 'bg-green-500/10 text-green-400'}`}>
+                                    {actionMessage}
+                                </div>
+                            )}
+
+                            <button
+                                type="submit"
+                                disabled={actionLoading}
+                                className="w-full bg-primary hover:bg-primary/90 text-white font-bold py-3 rounded-lg transition-colors disabled:opacity-50"
+                            >
+                                {actionLoading ? <Loader2 className="w-5 h-5 animate-spin mx-auto" /> : 'Create Event'}
+                            </button>
+                        </form>
+
+                        <h3 className="text-lg font-bold text-white mb-4">Manage Events</h3>
+                        <div className="overflow-hidden rounded-lg border border-white/10">
+                            <table className="w-full">
+                                <thead className="bg-white/5">
+                                    <tr>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Event</th>
+                                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-400 uppercase">Code</th>
+                                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-400 uppercase">Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-white/5">
+                                    {events.length === 0 ? (
+                                        <tr>
+                                            <td colSpan={3} className="px-6 py-8 text-center text-gray-500">
+                                                No events found.
+                                            </td>
+                                        </tr>
+                                    ) : (
+                                        events.map((evt) => (
+                                            <tr key={evt.id} className="hover:bg-white/5">
+                                                <td className="px-6 py-4 text-sm text-white font-medium">{evt.title}</td>
+                                                <td className="px-6 py-4 text-sm font-mono text-gray-300">{evt.access_code}</td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <button
+                                                        onClick={() => handleToggleEvent(evt.id, evt.is_active)}
+                                                        disabled={actionLoading}
+                                                        className={`flex items-center justify-end w-full gap-2 text-sm font-bold ${evt.is_active ? 'text-green-400' : 'text-gray-500'}`}
+                                                    >
+                                                        {evt.is_active ? 'ACTIVE' : 'INACTIVE'}
+                                                        {evt.is_active ? <ToggleRight className="w-6 h-6" /> : <ToggleLeft className="w-6 h-6" />}
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    )}
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 )}

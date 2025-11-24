@@ -125,7 +125,7 @@ export default function TeamsPage() {
     };
 
     const handleLeaveTeam = async () => {
-        if (!confirm('Are you sure you want to leave this team?')) return;
+        if (!confirm('Are you sure you want to leave? If you are the last member, the team will be deleted.')) return;
 
         setActionLoading(true);
         setError(null);

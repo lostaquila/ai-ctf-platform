@@ -70,6 +70,7 @@ export default async function ChallengePage({ params }: { params: Promise<{ id: 
                 simulation={simulation}
                 initialMessages={initialMessages}
                 initialUnlockedHints={unlockedHints?.map(h => h.hint_index) || []}
+                teamId={profile.team_id}
             />
         );
     }
