@@ -8,9 +8,9 @@ export default async function LeaderboardPage() {
 
     const { data: teams } = await supabase
         .from('teams')
-        .select('id, name, score')
+        .select('id, name, score, last_score_at')
         .order('score', { ascending: false })
-        .order('created_at', { ascending: true })
+        .order('last_score_at', { ascending: true }) // Earlier timestamp = better rank
         .limit(50);
 
     return (
@@ -32,6 +32,7 @@ export default async function LeaderboardPage() {
                             <tr className="bg-white/5 border-b border-white/10">
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Rank</th>
                                 <th className="px-6 py-4 text-left text-xs font-medium text-gray-400 uppercase tracking-wider">Team Name</th>
+                                <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Last Score</th>
                                 <th className="px-6 py-4 text-right text-xs font-medium text-gray-400 uppercase tracking-wider">Score</th>
                             </tr>
                         </thead>
@@ -64,6 +65,11 @@ export default async function LeaderboardPage() {
                                             <div className="text-sm font-medium text-white">{team.name}</div>
                                         </td>
                                         <td className="px-6 py-4 whitespace-nowrap text-right">
+                                            <div className="text-xs text-gray-400">
+                                                {team.last_score_at ? new Date(team.last_score_at).toLocaleString() : '-'}
+                                            </div>
+                                        </td>
+                                        <td className="px-6 py-4 whitespace-nowrap text-right">
                                             <div className="text-sm font-bold text-primary">{team.score}</div>
                                         </td>
                                     </tr>
@@ -72,7 +78,7 @@ export default async function LeaderboardPage() {
 
                             {(!teams || teams.length === 0) && (
                                 <tr>
-                                    <td colSpan={3} className="px-6 py-12 text-center text-gray-500">
+                                    <td colSpan={4} className="px-6 py-12 text-center text-gray-500">
                                         No teams have joined yet. Be the first!
                                     </td>
                                 </tr>

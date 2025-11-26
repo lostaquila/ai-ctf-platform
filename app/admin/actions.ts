@@ -102,9 +102,58 @@ export async function getAdminData() {
             // Continue without hints
         }
 
-        return { success: true, users: mergedUsers, simulations: simulationsWithHints };
+        // Fetch all events
+        const { data: events, error: eventsError } = await supabaseAdmin
+            .from('events')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (eventsError) throw eventsError;
+
+        return { success: true, users: mergedUsers, simulations: simulationsWithHints, events };
     } catch (error: any) {
         console.error('getAdminData Error:', error);
+        return { error: error.message };
+    }
+}
+
+export async function createEvent(title: string, access_code: string) {
+    try {
+        await requireAdmin();
+        const supabaseAdmin = getAdminClient();
+
+        const { data, error } = await supabaseAdmin
+            .from('events')
+            .insert({ title, access_code })
+            .select()
+            .single();
+
+        if (error) {
+            if (error.code === '23505') return { error: 'Access code already exists' };
+            throw error;
+        }
+
+        revalidatePath('/admin');
+        return { success: true, event: data };
+    } catch (error: any) {
+        return { error: error.message };
+    }
+}
+
+export async function toggleEventStatus(id: string, isActive: boolean) {
+    try {
+        await requireAdmin();
+        const supabaseAdmin = getAdminClient();
+
+        const { error } = await supabaseAdmin
+            .from('events')
+            .update({ is_active: isActive })
+            .eq('id', id);
+
+        if (error) throw error;
+
+        revalidatePath('/admin');
+        return { success: true };
+    } catch (error: any) {
         return { error: error.message };
     }
 }
@@ -115,10 +164,11 @@ export async function createSimulation(data: {
     system_prompt: string;
     flag_code: string;
     type: 'practice' | 'live';
+    points: number;
+    event_id?: string;
     hint_1?: string;
     hint_2?: string;
     hint_3?: string;
-    start_time?: string;
 }) {
     try {
         await requireAdmin();
@@ -131,7 +181,8 @@ export async function createSimulation(data: {
             system_prompt: data.system_prompt,
             flag_code: data.flag_code,
             type: data.type,
-            start_time: data.start_time || null
+            points: data.points,
+            event_id: data.event_id || null
         };
 
         const { data: newSim, error } = await supabaseAdmin
@@ -238,10 +289,11 @@ export async function updateSimulation(id: string, data: {
     system_prompt: string;
     flag_code: string;
     type: 'practice' | 'live';
+    points: number;
+    event_id?: string;
     hint_1?: string;
     hint_2?: string;
     hint_3?: string;
-    start_time?: string;
 }) {
     try {
         await requireAdmin();
@@ -254,7 +306,8 @@ export async function updateSimulation(id: string, data: {
             system_prompt: data.system_prompt,
             flag_code: data.flag_code,
             type: data.type,
-            start_time: data.start_time || null
+            points: data.points,
+            event_id: data.event_id || null
         };
 
         const { error } = await supabaseAdmin

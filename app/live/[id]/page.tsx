@@ -1,8 +1,6 @@
 import { createClient } from '@/utils/supabase/server';
-import ChatInterface from '@/components/ChatInterface';
+import LiveSimulationView from '@/components/LiveSimulationView';
 import { redirect } from 'next/navigation';
-import { Suspense } from 'react';
-import { Loader2 } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
 
@@ -32,7 +30,7 @@ export default async function LiveChallengePage({ params }: { params: Promise<{ 
 
     const { data: simulation } = await supabase
         .from('simulations')
-        .select('title, description')
+        .select('id, title, description, type, flag_code')
         .eq('id', id)
         .maybeSingle();
 
@@ -47,26 +45,23 @@ export default async function LiveChallengePage({ params }: { params: Promise<{ 
         );
     }
 
-    return (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-            <div className="mb-6">
-                <div className="inline-block bg-red-500/20 text-red-500 text-xs font-bold px-2 py-1 rounded mb-2">
-                    LIVE ROUND
-                </div>
-                <h1 className="text-2xl font-bold text-white">{simulation.title}</h1>
-                <p className="text-gray-400">{simulation.description}</p>
-            </div>
+    // Fetch unlocked hints
+    const { data: unlockedHints } = await supabase
+        .from('unlocked_hints')
+        .select('hint_index')
+        .eq('team_id', profile.team_id)
+        .eq('simulation_id', id);
 
-            <Suspense fallback={
-                <div className="flex items-center justify-center h-96 glass-card">
-                    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-            }>
-                <ChatInterface
-                    simulationId={id}
-                    teamId={profile.team_id}
-                />
-            </Suspense>
-        </div>
+    const initialMessages = [
+        { role: 'assistant' as const, content: 'Who goes there? State your business!' }
+    ];
+
+    return (
+        <LiveSimulationView
+            simulation={simulation}
+            initialMessages={initialMessages}
+            initialUnlockedHints={unlockedHints?.map(h => h.hint_index) || []}
+            teamId={profile.team_id}
+        />
     );
 }

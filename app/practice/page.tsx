@@ -10,11 +10,17 @@ export default async function PracticePage() {
   const profile = await getUserProfile();
   const hasTeam = !!profile?.team_id;
 
-  const { data: simulations } = await supabase
+  const { data: simulations, error: simError } = await supabase
     .from('simulations')
-    .select('id, title, description')
+    .select('id, title, description, event_id')
     .eq('type', 'practice')
+    // .is('event_id', null) // Temporarily disabled for debugging
     .order('created_at', { ascending: true });
+
+  // Debug logging
+  console.log('Simulations query error:', simError);
+  console.log('Simulations found:', simulations?.length);
+  console.log('Simulations data:', simulations);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
