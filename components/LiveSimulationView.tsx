@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { Send, Flag, Loader2, Lightbulb, Lock, Shield, AlertTriangle } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Send, Flag, Loader2, Lightbulb, Lock, Shield, AlertTriangle, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { unlockHint } from '@/app/practice/actions';
 
@@ -573,8 +574,8 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                                         animate={{ opacity: 1, y: 0 }}
                                         exit={{ opacity: 0 }}
                                         className={`pointer-events-auto backdrop-blur-sm rounded-lg p-2 max-w-[90%] ${msg.role === 'assistant'
-                                                ? 'bg-gradient-to-r from-pink-500/80 to-purple-600/80 border-l-4 border-white text-white shadow-lg'
-                                                : 'bg-black/40 text-white/90'
+                                            ? 'bg-gradient-to-r from-pink-500/80 to-purple-600/80 border-l-4 border-white text-white shadow-lg'
+                                            : 'bg-black/40 text-white/90'
                                             }`}
                                     >
                                         <span className="font-bold text-xs opacity-75 block mb-0.5">
@@ -738,7 +739,95 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                         </motion.div>
                     )}
                 </AnimatePresence>
+
+                {/* Hints Panel Drawer - Rendered via Portal */}
+                {typeof document !== 'undefined' && createPortal(
+                    <AnimatePresence>
+                        {showHints && (
+                            <>
+                                {/* Backdrop */}
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100]"
+                                    onClick={() => setShowHints(false)}
+                                />
+
+                                {/* Drawer */}
+                                <motion.div
+                                    initial={{ x: '100%' }}
+                                    animate={{ x: 0 }}
+                                    exit={{ x: '100%' }}
+                                    transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                                    className="fixed top-0 right-0 h-full w-full max-w-md bg-slate-900 border-l border-white/10 z-[101] shadow-2xl flex flex-col"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <div className="p-6 border-b border-white/10 flex items-center justify-between bg-slate-900/50 backdrop-blur-md">
+                                        <h3 className="text-xl font-bold text-white flex items-center gap-2">
+                                            <Lightbulb className="w-5 h-5 text-yellow-500" />
+                                            Hints
+                                        </h3>
+                                        <button
+                                            onClick={() => setShowHints(false)}
+                                            className="p-2 hover:bg-white/10 rounded-full transition-colors text-gray-400 hover:text-white"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+                                    </div>
+
+                                    <div className="flex-1 overflow-y-auto p-6 space-y-4">
+                                        {[1, 2, 3].map((index) => {
+                                            const isUnlocked = unlockedHints.includes(index);
+                                            const costs: Record<number, number> = { 1: 10, 2: 25, 3: 50 };
+                                            const cost = costs[index];
+
+                                            return (
+                                                <div key={index} className="bg-black/20 rounded-xl border border-white/5 overflow-hidden">
+                                                    <button
+                                                        onClick={() => !isUnlocked && handleUnlockHint(index)}
+                                                        disabled={isUnlocked || unlockingHint === index}
+                                                        className={`w-full p-4 flex items-center justify-between transition-colors ${isUnlocked
+                                                            ? 'bg-green-500/10 cursor-default'
+                                                            : 'hover:bg-white/5'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            {isUnlocked ? (
+                                                                <Lightbulb className="w-5 h-5 text-green-500" />
+                                                            ) : (
+                                                                <Lock className="w-5 h-5 text-gray-500" />
+                                                            )}
+                                                            <span className={`font-medium ${isUnlocked ? 'text-green-400' : 'text-gray-300'}`}>
+                                                                Hint {index}
+                                                            </span>
+                                                        </div>
+                                                        {!isUnlocked && (
+                                                            <span className="text-yellow-500 font-bold text-sm">
+                                                                {unlockingHint === index ? (
+                                                                    <Loader2 className="w-4 h-4 animate-spin" />
+                                                                ) : (
+                                                                    `-${cost} pts`
+                                                                )}
+                                                            </span>
+                                                        )}
+                                                    </button>
+                                                    {isUnlocked && hintTexts[index] && (
+                                                        <div className="p-4 bg-green-500/5 border-t border-green-500/10">
+                                                            <p className="text-sm text-gray-300">{hintTexts[index]}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </motion.div>
+                            </>
+                        )}
+                    </AnimatePresence>,
+                    document.body
+                )}
             </div>
-        </div>
+        </div >
     );
 }
