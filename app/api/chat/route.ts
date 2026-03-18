@@ -3,7 +3,9 @@ import { createClient as createServerClient } from '@/utils/supabase/server';
 import { NextResponse } from 'next/server';
 
 const MODELS = [
-    "anthropic/claude-3.5-sonnet"
+    "google/gemini-flash-1.5",      // Primary: Fast, Cheap, High Limits
+    "meta-llama/llama-3-8b-instruct", // Backup 1: Very Fast
+    "openai/gpt-3.5-turbo"          // Backup 2: Reliable Standard
 ];
 
 export async function POST(request: Request) {
@@ -69,12 +71,12 @@ export async function POST(request: Request) {
         }
 
         // 4. OpenRouter Call with Fallback
-        let lastError = null;
-
         for (const model of MODELS) {
             try {
-                console.log(`Attempting to connect to OpenRouter with model: ${model}`);
+                // 1. Log which model we are trying
+                console.log(`Attempting model: ${model}`);
 
+                // 2. Fetch OpenRouter
                 const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
                     method: "POST",
                     headers: {
@@ -84,7 +86,7 @@ export async function POST(request: Request) {
                         "Content-Type": "application/json"
                     },
                     body: JSON.stringify({
-                        model: model,
+                        model: model, // Use the current loop variable
                         messages: [
                             { role: "system", content: systemPrompt },
                             ...messages
@@ -92,34 +94,24 @@ export async function POST(request: Request) {
                     })
                 });
 
+                // 3. Check Success
                 if (response.ok) {
                     const data = await response.json();
-                    const content = data.choices[0].message.content;
-                    console.log(`Success with model: ${model}`);
-                    return NextResponse.json({ message: content });
+                    return NextResponse.json({ content: data.choices[0].message.content }); // Success! Return immediately.
                 }
 
-                // If not OK, log and continue to next model
-                const errorText = await response.text();
-                console.warn(`Model ${model} failed with status ${response.status}: ${errorText}`);
-                lastError = `OpenRouter Error (${model}): ${response.status} - ${errorText}`;
+                // 4. Handle Failure (429, 500, 503)
+                console.warn(`Model ${model} failed with status ${response.status}. Trying next...`);
+                continue; // Skip to next model
 
-                // Only continue if it's a rate limit or server error
-                // If it's a 400 (Bad Request), it might be the prompt, but we'll try others just in case
-                if (response.status === 401) {
-                    // Invalid API Key - no point trying others
-                    return NextResponse.json({ error: 'Invalid OpenRouter API Key' }, { status: 500 });
-                }
-
-            } catch (error: any) {
-                console.warn(`Network error with model ${model}:`, error);
-                lastError = `Network Error (${model}): ${error.message}`;
+            } catch (error) {
+                console.error(`Network error on ${model}:`, error);
+                continue; // Skip to next model
             }
         }
 
-        // If we get here, all models failed
-        console.error('All models failed. Last error:', lastError);
-        return NextResponse.json({ error: `All AI models failed. Last error: ${lastError}` }, { status: 503 });
+        // Final Failure
+        return NextResponse.json({ error: "All AI models busy. Please try again." }, { status: 503 });
 
     } catch (error: any) {
         console.error('Chat API Error:', error);

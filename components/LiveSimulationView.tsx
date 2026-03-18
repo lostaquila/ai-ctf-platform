@@ -37,6 +37,8 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
     const isBombSimulation = simulation.title === 'The Ticking Timebomb';
     const isDoubleAgent = simulation.title.includes('Double Agent');
     const isInfluencerSimulation = simulation.title.includes('Influencer');
+    const isGenieSimulation = simulation.title.includes('Genie');
+    const isHauntedContract = simulation.title.includes('Haunted Contract');
 
     // Bomb Simulation State
     const [timeLeft, setTimeLeft] = useState(300); // 5 minutes
@@ -177,7 +179,7 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
             }
 
             const data = await response.json();
-            const responseText = data.message;
+            const responseText = data.content;
 
             if (isDoubleAgent && (responseText.includes('Alpha:') || responseText.includes('Omega:'))) {
                 // Parse Double Agent response
@@ -273,7 +275,7 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
     };
 
     return (
-        <div className={`min-h-screen relative overflow-hidden flex flex-col ${isBombSimulation ? 'bg-black font-mono' : 'bg-slate-900'}`}>
+        <div className={`min-h-screen relative overflow-hidden flex flex-col ${isBombSimulation ? 'bg-black font-mono' : (isHauntedContract ? 'bg-slate-950 font-serif' : 'bg-slate-900')}`}>
 
             {/* Shake Effect Container */}
             <motion.div
@@ -284,8 +286,14 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                 {/* Atmospheric Background */}
                 <div className={`absolute inset-0 ${isBombSimulation
                     ? 'bg-black'
-                    : 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black'
-                    }`} />
+                    : (isGenieSimulation
+                        ? 'bg-cover bg-center'
+                        : (isHauntedContract
+                            ? 'bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-slate-900 via-indigo-950 to-black'
+                            : 'bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-800 via-slate-900 to-black'))
+                    }`}
+                    style={isGenieSimulation ? { backgroundImage: 'url(/assets/genie/genie_bg.png)' } : {}}
+                />
 
                 {/* Bomb Background Image or Effect */}
                 {isBombSimulation && (
@@ -338,7 +346,14 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
 
             {/* Header */}
             <div className={`relative z-20 p-4 flex justify-between items-start ${isInfluencerSimulation ? 'max-w-md mx-auto w-full' : ''}`}>
-                <div className={`backdrop-blur-md p-4 rounded-2xl border max-w-md ${isBombSimulation ? 'bg-black/80 border-green-500/50 text-green-500' : 'bg-black/40 border-white/10 text-white'}`}>
+                <div className={`backdrop-blur-md p-4 rounded-2xl border max-w-md ${isBombSimulation
+                    ? 'bg-black/80 border-green-500/50 text-green-500'
+                    : (isGenieSimulation
+                        ? 'bg-purple-900/60 border-purple-500/30 text-purple-200'
+                        : (isHauntedContract
+                            ? 'bg-slate-900/80 border-indigo-500/30 text-indigo-200 font-serif'
+                            : 'bg-black/40 border-white/10 text-white'))
+                    }`}>
                     <h1 className="text-2xl font-bold flex items-center gap-2">
                         <Shield className={isBombSimulation ? "text-green-500" : "text-red-500"} />
                         {simulation.title}
@@ -446,8 +461,8 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                     </>
                 )}
 
-                {/* THE GUARD CHARACTER (Only if not Bomb and not Double Agent and not Influencer) */}
-                {!isBombSimulation && !isDoubleAgent && !isInfluencerSimulation && (
+                {/* THE GUARD CHARACTER (Only if not Bomb and not Double Agent and not Influencer and not Genie) */}
+                {!isBombSimulation && !isDoubleAgent && !isInfluencerSimulation && !isGenieSimulation && !isHauntedContract && (
                     <div className="relative w-[300px] h-[400px] md:w-[400px] md:h-[500px] flex items-end justify-center z-10">
                         <motion.div
                             animate={loading ? { scale: [1, 1.02, 1] } : { scale: 1 }}
@@ -561,6 +576,121 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                     </div>
                 )}
 
+                {/* GENIE AVATAR */}
+                {isGenieSimulation && (
+                    <div className="relative w-full h-full flex items-center justify-center z-10">
+                        {/* Smoke Particles (Optimized - No State Updates) */}
+                        <div className="absolute bottom-40 left-1/2 -translate-x-1/2 w-0 h-0 z-10">
+                            {[
+                                { id: 1, x: -30, delay: 0, scale: 1.2 },
+                                { id: 2, x: 30, delay: 1.5, scale: 1.5 },
+                                { id: 3, x: -10, delay: 0.8, scale: 1.0 },
+                                { id: 4, x: 20, delay: 2.2, scale: 1.3 },
+                                { id: 5, x: 0, delay: 0.2, scale: 1.8 },
+                            ].map(p => (
+                                <motion.div
+                                    key={p.id}
+                                    initial={{ opacity: 0, y: 0, x: p.x, scale: 0.5 }}
+                                    animate={{ opacity: [0, 0.6, 0], y: -250, scale: p.scale * 2.5 }}
+                                    transition={{ duration: 4, repeat: Infinity, delay: p.delay, ease: "easeOut" }}
+                                    className="absolute bottom-0 w-16 h-16 bg-purple-500/20 rounded-full blur-2xl"
+                                    style={{ left: p.x }}
+                                />
+                            ))}
+                        </div>
+
+                        {/* Floating Genie with Blending Mode */}
+                        <motion.div
+                            animate={{ y: [0, -20, 0] }}
+                            transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+                            className="relative z-20 w-[350px] h-[350px] md:w-[450px] md:h-[450px]"
+                        >
+                            <img
+                                src="/assets/the_genie.png"
+                                alt="The Malicious Genie"
+                                className="w-full h-full object-contain drop-shadow-[0_0_50px_rgba(168,85,247,0.4)]"
+                            />
+                        </motion.div>
+                    </div>
+                )}
+
+                {/* HAUNTED CONTRACT WRAITH */}
+                {isHauntedContract && (
+                    <div className="relative w-full h-full flex items-center justify-center z-10">
+                        {/* Ethereal Chains / Magic circles */}
+                        <motion.div 
+                            animate={{ rotate: 360 }} 
+                            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+                            className="absolute w-96 h-96 border-4 border-indigo-500/20 rounded-full border-dashed"
+                        />
+                        <motion.div 
+                            animate={{ rotate: -360 }} 
+                            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+                            className="absolute w-[28rem] h-[28rem] border-2 border-purple-500/10 rounded-full"
+                        />
+                        
+                        {/* Floating Wraith Character */}
+                        <motion.div
+                            animate={loading ? { scale: [1, 1.05, 1], y: [0, -15, 0] } : { y: [0, -10, 0] }}
+                            transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
+                            className="relative z-20 flex flex-col items-center"
+                        >
+                            {/* Hood/Cloak */}
+                            <div className="relative w-48 h-64 bg-slate-900 rounded-t-full rounded-b-3xl border-2 border-indigo-900/50 shadow-[0_0_50px_rgba(79,70,229,0.3)] overflow-hidden">
+                                {/* Inner darkness */}
+                                <div className="absolute inset-x-4 top-4 bottom-8 bg-black rounded-t-full rounded-b-2xl shadow-inner">
+                                    {/* Glowing Eyes */}
+                                    <div className="absolute top-24 w-full flex justify-center gap-6 px-4">
+                                        <motion.div 
+                                            animate={loading ? { opacity: [0.5, 1, 0.5] } : { opacity: 0.8 }}
+                                            transition={{ duration: 1.5, repeat: Infinity }}
+                                            className="w-4 h-6 bg-indigo-400 rounded-full blur-[2px] shadow-[0_0_15px_#818cf8]"
+                                        />
+                                        <motion.div 
+                                            animate={loading ? { opacity: [0.5, 1, 0.5] } : { opacity: 0.8 }}
+                                            transition={{ duration: 1.5, repeat: Infinity, delay: 0.2 }}
+                                            className="w-4 h-6 bg-indigo-400 rounded-full blur-[2px] shadow-[0_0_15px_#818cf8]"
+                                        />
+                                    </div>
+                                    
+                                    {/* Speaking animation for Wraith */}
+                                    <motion.div
+                                        animate={isSpeaking ? { opacity: [0, 0.5, 0], scaleY: [1, 2, 1] } : { opacity: 0 }}
+                                        transition={{ duration: 0.5, repeat: isSpeaking ? Infinity : 0 }}
+                                        className="absolute top-40 left-1/2 -translate-x-1/2 w-8 h-2 bg-indigo-500 rounded-full blur-[2px]"
+                                    />
+                                </div>
+                                {/* Cloak folds */}
+                                <div className="absolute top-0 left-0 w-8 h-full bg-slate-800/50 rounded-l-full"></div>
+                                <div className="absolute top-0 right-0 w-8 h-full bg-slate-950/50 rounded-r-full"></div>
+                            </div>
+
+                            {/* Ghostly Tail / Fading Body */}
+                            <div className="w-32 h-32 bg-gradient-to-b from-slate-900 to-transparent blur-md -mt-8"></div>
+
+                            {/* Floating Magical Contract */}
+                            <motion.div
+                                animate={{ y: [0, -10, 0], rotate: [-2, 2, -2] }}
+                                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+                                className="absolute -bottom-10 -right-20 w-32 h-44 bg-[#fdf6e3] rounded-sm transform rotate-12 shadow-[0_0_20px_rgba(253,246,227,0.4)] border border-amber-900/30 overflow-hidden z-30 flex flex-col items-center py-4 gap-2"
+                            >
+                                <div className="w-24 h-1 bg-amber-900/20 rounded-full" />
+                                <div className="w-20 h-1 bg-amber-900/20 rounded-full" />
+                                <div className="w-24 h-1 bg-amber-900/20 rounded-full" />
+                                <div className="w-16 h-1 bg-amber-900/20 rounded-full" />
+                                <div className="mt-auto w-10 h-10 border-4 border-red-800/40 rounded-full flex items-center justify-center">
+                                    <div className="w-6 h-6 border-2 border-red-800/40 rounded-full" />
+                                </div>
+                                <motion.div 
+                                    className="absolute inset-0 bg-gradient-to-t from-indigo-500/10 to-transparent pointer-events-none"
+                                    animate={{ opacity: [0.3, 0.6, 0.3] }}
+                                    transition={{ duration: 3, repeat: Infinity }}
+                                />
+                            </motion.div>
+                        </motion.div>
+                    </div>
+                )}
+
                 {/* SPEECH BUBBLES (Chat) */}
                 <div className={`absolute inset-0 pointer-events-none flex flex-col ${isInfluencerSimulation ? 'justify-end pb-44 px-4' : 'justify-center items-center'} z-40`}>
                     <div className={`w-full ${isInfluencerSimulation ? 'h-[40vh] overflow-hidden flex flex-col justify-end gap-2' : 'max-w-5xl h-[60vh] relative'}`}>
@@ -618,10 +748,18 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                                         positionClass = 'top-1/2 -translate-y-1/2 left-1/2 -translate-x-[110%] md:-translate-x-[105%]';
                                         bubbleStyle = isBombSimulation
                                             ? 'bg-black text-green-500 border-green-500 font-mono shadow-[0_0_10px_#00ff00]'
-                                            : 'bg-white text-slate-900 border-slate-900 rounded-br-none';
+                                            : (isHauntedContract ? 'bg-[#fdf6e3]/95 text-amber-950 border-amber-900/50 rounded-br-none shadow-[0_0_20px_rgba(120,53,15,0.2)] font-serif' : 'bg-white text-slate-900 border-slate-900 rounded-br-none');
                                         tailStyle = isBombSimulation
                                             ? 'bg-black border-green-500 border-t-0 border-l-0 skew-x-[20deg] -right-3'
-                                            : '-right-3 bg-white border-slate-900 border-t-0 border-l-0 skew-x-[20deg]';
+                                            : (isGenieSimulation
+                                                ? '-right-3 bg-purple-900 border-purple-500 border-t-0 border-l-0 skew-x-[20deg]'
+                                                : (isHauntedContract ? '-right-3 bg-[#fdf6e3] border-amber-900/50 border-t-0 border-l-0 skew-x-[20deg]' : '-right-3 bg-white border-slate-900 border-t-0 border-l-0 skew-x-[20deg]'));
+                                    }
+
+                                    if (isGenieSimulation && msg.role === 'assistant') {
+                                        bubbleStyle = 'bg-purple-900/90 text-purple-100 border-purple-500 rounded-br-none shadow-[0_0_15px_rgba(168,85,247,0.3)]';
+                                    } else if (isHauntedContract && msg.role === 'assistant') {
+                                        // Specific overrides if needed
                                     }
 
                                     return (
@@ -665,7 +803,7 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
             </div>
 
             {/* BOTTOM CONTROLS */}
-            <div className={`relative z-30 backdrop-blur-lg border-t p-4 pb-8 ${isBombSimulation ? 'bg-black/80 border-green-500/30' : (isInfluencerSimulation ? 'bg-black/90 border-white/10 max-w-md mx-auto w-full border-x border-b' : 'bg-slate-900/80 border-white/10')}`}>
+            <div className={`relative z-30 backdrop-blur-lg border-t p-4 pb-8 ${isBombSimulation ? 'bg-black/80 border-green-500/30' : (isInfluencerSimulation ? 'bg-black/90 border-white/10 max-w-md mx-auto w-full border-x border-b' : (isHauntedContract ? 'bg-slate-950/80 border-indigo-500/30' : 'bg-slate-900/80 border-white/10'))}`}>
                 <div className={`container mx-auto max-w-4xl flex gap-4 ${isInfluencerSimulation ? 'flex-col' : 'flex-col md:flex-row'}`}>
                     {/* Chat Input */}
                     <form onSubmit={handleSend} className="flex-1 flex gap-2">
@@ -673,10 +811,10 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                             type="text"
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder={isBombSimulation ? "INITIATE PROTOCOL..." : (isInfluencerSimulation ? "Say something..." : "Speak to the guard...")}
+                            placeholder={isBombSimulation ? "INITIATE PROTOCOL..." : (isInfluencerSimulation ? "Say something..." : (isHauntedContract ? "Negotiate a term..." : "Speak to the guard..."))}
                             className={`flex-1 px-6 py-4 rounded-full focus:outline-none focus:ring-2 text-lg ${isBombSimulation
                                 ? 'bg-black border border-green-500 text-green-500 placeholder:text-green-800 focus:ring-green-500 font-mono'
-                                : 'bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 focus:ring-blue-500'
+                                : (isHauntedContract ? 'bg-slate-900 border border-indigo-500/50 text-indigo-100 placeholder:text-indigo-400 focus:ring-indigo-500' : 'bg-slate-800 border border-slate-700 text-white placeholder:text-slate-500 focus:ring-blue-500')
                                 }`}
                             disabled={loading || isGameOver}
                             autoFocus
@@ -686,7 +824,7 @@ export default function LiveSimulationView({ simulation, initialMessages, initia
                             disabled={loading || !input.trim() || isGameOver}
                             className={`p-4 rounded-full transition-all disabled:opacity-50 disabled:scale-95 shadow-lg ${isBombSimulation
                                 ? 'bg-green-900/50 hover:bg-green-900 text-green-500 border border-green-500 shadow-green-900/20'
-                                : (isInfluencerSimulation ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-pink-900/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20')
+                                : (isInfluencerSimulation ? 'bg-pink-600 hover:bg-pink-700 text-white shadow-pink-900/20' : (isHauntedContract ? 'bg-indigo-900/50 hover:bg-indigo-800 text-indigo-300 border border-indigo-500/50 shadow-indigo-900/20' : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-900/20'))
                                 }`}
                         >
                             <Send className="w-6 h-6" />

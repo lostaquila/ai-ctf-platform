@@ -85,9 +85,7 @@ export async function getEventData() {
         .eq('event_id', eventId)
         .order('points', { ascending: true });
 
-    console.log('Event ID:', eventId);
-    console.log('Simulations for this event:', simulations?.length);
-    console.log('Simulations:', simulations);
+
 
     // 4. Fetch team's progress (solved simulations for THIS event only)
     const simulationIds = simulations?.map(s => s.id) || [];
@@ -99,10 +97,8 @@ export async function getEventData() {
         .eq('is_correct', true)
         .in('simulation_id', simulationIds.length > 0 ? simulationIds : ['00000000-0000-0000-0000-000000000000']); // Prevent empty array error
 
-    const solvedIds = submissions?.map(s => s.simulation_id) || [];
-
-    console.log('Solved simulations for this event:', solvedIds.length);
-    console.log('Solved IDs:', solvedIds);
+    // Deduplicate solved IDs to handle multiple submissions for the same simulation
+    const solvedIds = Array.from(new Set(submissions?.map(s => s.simulation_id) || []));
 
     return {
         success: true,
